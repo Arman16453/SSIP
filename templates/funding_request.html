@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if funding_request %}View Funding Request{% else %}Submit Funding Request{% endif %}</h2>
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Application Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Application Number:</strong> {{ application.application_number }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Project Title:</strong> {{ application.project_title }}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Estimated Cost:</strong> ₹{{ "%.2f"|format(application.total_cost) }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Status:</strong>
+                    <span class="badge {% if application.principal_status == 'approved' %}bg-success{% elif application.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                        {{ application.principal_status|title }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if funding_request %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Current Funding Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="badge-group mb-3">
+                <span class="badge status-badge {% if funding_request.dept_status == 'approved' %}bg-success{% elif funding_request.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Department: {{ funding_request.dept_status|title }}
+                </span>
+                <span class="badge status-badge {% if funding_request.college_status == 'approved' %}bg-success{% elif funding_request.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    College: {{ funding_request.college_status|title }}
+                </span>
+                <span class="badge status-badge {% if funding_request.principal_status == 'approved' %}bg-success{% elif funding_request.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Principal: {{ funding_request.principal_status|title }}
+                </span>
+            </div>
+
+            {% if funding_request.bill_path %}
+            <div class="mb-3">
+                <strong>Uploaded Bill:</strong>
+                <a href="{{ url_for('static', filename=funding_request.bill_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">View Bill</a>
+            </div>
+            {% endif %}
+
+            <div class="timeline">
+                {% if funding_request.dept_remarks %}
+                <div class="timeline-item {% if funding_request.dept_status == 'approved' %}approved{% elif funding_request.dept_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Department Review</h6>
+                    <p>{{ funding_request.dept_remarks }}</p>
+                    <small>{{ funding_request.dept_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if funding_request.college_remarks %}
+                <div class="timeline-item {% if funding_request.college_status == 'approved' %}approved{% elif funding_request.college_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>College Review</h6>
+                    <p>{{ funding_request.college_remarks }}</p>
+                    <small>{{ funding_request.college_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if funding_request.principal_remarks %}
+                <div class="timeline-item {% if funding_request.principal_status == 'approved' %}approved{% elif funding_request.principal_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Principal Review</h6>
+                    <p>{{ funding_request.principal_remarks }}</p>
+                    <small>{{ funding_request.principal_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Funding Request Form</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="actual_cost" class="form-label">Actual Cost (₹)</label>
+                    <input type="number" step="0.01" class="form-control" id="actual_cost" name="actual_cost" required>
+                    <div class="form-text">Enter the actual cost incurred for the project</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="bill" class="form-label">Upload Bill</label>
+                    <input type="file" class="form-control" id="bill" name="bill" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <div class="form-text">Upload the bill/invoice in PDF, JPG, or PNG format</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Remarks</label>
+                    <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
+                    <div class="form-text">Add any additional information or remarks about the funding request</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit Funding Request</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
