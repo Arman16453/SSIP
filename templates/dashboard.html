@@ -342,9 +342,11 @@
                 {% endif %}
             </h2>
             {% if current_user.role == 'student' %}
-            <a href="{{ url_for('new_application') }}" class="btn btn-new-app">
-                <i class="fas fa-plus-circle me-2"></i>New Application
-            </a>
+            <div class="text-end mb-3">
+                <a href="{{ url_for('submit_application') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Submit New Application
+                </a>
+            </div>
             {% endif %}
         </div>
     </div>

@@ -11,6 +11,8 @@ import json
 import time
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
+import openai
+from flask_wtf.csrf import CSRFProtect
 
 load_dotenv()
 
@@ -29,18 +31,42 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 # Initialize serializer for secure tokens
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-@app.template_filter('datetime')
-def format_datetime(value):
-    if value is None:
-        return ""
-    return value.strftime('%B %d, %Y %I:%M %p')
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
-@app.template_filter('from_json')
-def from_json(value):
-    try:
-        return json.loads(value) if value else []
-    except:
-        return []
+CHATBOT_RESPONSES = {
+    'default': 'I can help you with information about SSIP (Student Startup and Innovation Policy). SSIP is a Gujarat government initiative to support innovative student projects. Ask me about what SSIP is, how to apply, or about funding!',
+    
+    'what': {
+        'keywords': ['what', 'ssip', 'about', 'tell me', 'explain'],
+        'response': 'SSIP (Student Startup and Innovation Policy) is a Gujarat government initiative that:\n1. Supports innovative student projects\n2. Provides funding up to ₹2,00,000\n3. Helps develop entrepreneurship skills\n4. Encourages technology-based solutions\n5. Connects students with mentors'
+    },
+    
+    'application': {
+        'keywords': ['submit', 'application', 'apply', 'how to apply', 'new application'],
+        'response': 'To submit a new application: 1. Log in to your account, 2. Click "Submit New Application" on your dashboard, 3. Fill in project details, 4. Upload required documents, 5. Submit for review.'
+    },
+    
+    'funding': {
+        'keywords': ['fund', 'money', 'amount', 'grant', 'financial'],
+        'response': 'SSIP provides funding up to ₹2,00,000 for approved projects. The amount depends on your project requirements and the evaluation by the review committee.'
+    },
+    
+    'documents': {
+        'keywords': ['document', 'file', 'upload', 'requirement', 'quotation'],
+        'response': 'Required documents: 1. Project proposal, 2. Cost estimates/quotations, 3. Team details, 4. Implementation timeline. All documents should be in PDF format.'
+    },
+    
+    'status': {
+        'keywords': ['status', 'track', 'progress', 'update'],
+        'response': 'You can track your application status on the dashboard. The approval process has three stages: 1. Department Coordinator, 2. College Coordinator, 3. Principal.'
+    },
+    
+    'review': {
+        'keywords': ['review', 'process', 'approval', 'evaluate', 'assessment'],
+        'response': 'The review process: 1. Department coordinator reviews technical aspects, 2. College coordinator verifies project feasibility, 3. Principal gives final approval for funding.'
+    }
+}
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -327,15 +353,13 @@ class ApplicationForm(FlaskForm):
     total_cost = DecimalField('Total Cost', validators=[DataRequired(), NumberRange(min=0)])
     submit = SubmitField('Submit Application')
 
-@app.route('/application/new', methods=['GET', 'POST'])
+@app.route('/submit_application', methods=['GET', 'POST'])
 @login_required
-def new_application():
-    form = ApplicationForm()
+def submit_application():
     if request.method == 'POST':
-        # Generate a unique application number
-        timestamp = int(time.time())
-        application_number = f"SSIP{timestamp}"
-
+        # Generate unique application number
+        application_number = f"SSIP{int(time.time())}"
+        
         # Create new application
         application = Application(
             application_number=application_number,
@@ -344,16 +368,16 @@ def new_application():
             problem_statement=request.form.get('problem_statement'),
             solution=request.form.get('solution'),
             team_members=request.form.get('team_members'),
-            total_cost=float(request.form.get('total_cost')),
             team_size=int(request.form.get('team_size', 1)),
             project_duration=int(request.form.get('project_duration', 6)),
-            completion_percentage=int(request.form.get('completion_percentage', 0)),
-            innovation_score=int(request.form.get('innovation_score', 0)),
-            technical_complexity=request.form.get('technical_complexity', 'medium'),
-            project_domain=request.form.get('project_domain', ''),
-            implementation_status=request.form.get('implementation_status', 'planning')
+            project_domain=request.form.get('project_domain'),
+            technical_complexity=request.form.get('technical_complexity'),
+            total_cost=float(request.form.get('total_cost')),
+            completion_percentage=0,
+            innovation_score=0,
+            implementation_status='planning'
         )
-
+        
         # Handle quotation file
         if 'quotation' in request.files:
             quotation = request.files['quotation']
@@ -362,28 +386,11 @@ def new_application():
                 quotation_path = os.path.join('uploads', 'quotations', filename)
                 quotation.save(os.path.join(app.root_path, 'static', quotation_path))
                 application.quotation_path = quotation_path
-
+        
         try:
             db.session.add(application)
-            db.session.flush()  # Get application ID before adding components
-
-            # Add components
-            components_data = request.form.get('components', '[]')
-            try:
-                components = json.loads(components_data)
-                for comp in components:
-                    component = Component(
-                        application_id=application.id,  # Now we have the application ID
-                        name=comp['name'],
-                        quantity=comp['quantity'],
-                        cost_per_unit=comp['cost_per_unit']
-                    )
-                    db.session.add(component)
-            except json.JSONDecodeError:
-                db.session.rollback()
-                flash('Invalid components data', 'error')
-                return redirect(url_for('new_application'))
-
+            db.session.commit()
+            
             # Create notification for department coordinator
             dept_coord = User.query.filter_by(role='dept_coord', department=current_user.department).first()
             if dept_coord:
@@ -394,17 +401,35 @@ def new_application():
                     type='new_application'
                 )
                 db.session.add(notification)
+                db.session.commit()
+                
+                # Send email notification
+                email_body = f"""
+                Dear Department Coordinator,
 
-            db.session.commit()
+                A new SSIP application ({application_number}) has been submitted and requires your review.
+                
+                Project Details:
+                - Title: {application.project_title}
+                - Domain: {application.project_domain}
+                - Total Cost: ₹{application.total_cost}
+                
+                Please login to the SSIP portal to review the application.
+                
+                Best regards,
+                SSIP Portal Team
+                """
+                send_email('New SSIP Application Submitted', dept_coord.email, email_body)
+            
             flash('Application submitted successfully', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
             flash('Error submitting application. Please try again.', 'error')
             print(f"Error: {str(e)}")
-            return redirect(url_for('new_application'))
-
-    return render_template('new_application.html', form=form)
+            return redirect(url_for('submit_application'))
+    
+    return render_template('submit_application.html')
 
 @app.route('/application/<int:id>')
 @login_required
@@ -1982,6 +2007,46 @@ def update_application(application_id):
             return redirect(url_for('dashboard'))
 
     return render_template('update_application.html', application=application)
+
+@app.route('/chatbot', methods=['POST'])
+@login_required
+def chatbot():
+    try:
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({'response': 'Invalid request. Please try again.'}), 400
+            
+        user_message = data['message'].lower().strip()
+        
+        # Simple responses
+        if 'what' in user_message and 'ssip' in user_message:
+            return jsonify({'response': 'SSIP (Student Startup and Innovation Policy) is a Gujarat government initiative that supports innovative student projects with funding up to ₹2,00,000. It helps students develop entrepreneurship skills and turn their ideas into reality.'})
+            
+        if 'how' in user_message or 'apply' in user_message:
+            return jsonify({'response': 'To apply for SSIP:\n1. Log in to your account\n2. Click "Submit New Application"\n3. Fill in your project details\n4. Upload required documents\n5. Submit for review'})
+            
+        if 'fund' in user_message or 'money' in user_message:
+            return jsonify({'response': 'SSIP provides funding up to ₹2,00,000 for approved projects. The amount depends on your project requirements and evaluation.'})
+            
+        # Default response
+        return jsonify({'response': 'I can help you with SSIP applications, funding, and processes. Try asking:\n- What is SSIP?\n- How to apply?\n- About funding\n- Required documents'})
+
+    except Exception as e:
+        print(f"Chatbot error: {str(e)}")
+        return jsonify({'response': 'Sorry, I encountered an error. Please try again.'}), 500
+
+@app.template_filter('datetime')
+def format_datetime(value):
+    if value is None:
+        return ""
+    return value.strftime('%B %d, %Y %I:%M %p')
+
+@app.template_filter('from_json')
+def from_json(value):
+    try:
+        return json.loads(value) if value else []
+    except:
+        return []
 
 if __name__ == '__main__':
     # Create upload directories if they don't exist
