@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Resubmit Application</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- Project Details -->
+                        <div class="mb-4">
+                            <h5>Project Details</h5>
+                            <div class="mb-3">
+                                <label for="project_title" class="form-label">Project Title</label>
+                                <input type="text" class="form-control" id="project_title" name="project_title" value="{{ application.project_title }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="problem_statement" class="form-label">Problem Statement</label>
+                                <textarea class="form-control" id="problem_statement" name="problem_statement" rows="4" required>{{ application.problem_statement }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="solution" class="form-label">Proposed Solution</label>
+                                <textarea class="form-control" id="solution" name="solution" rows="4" required>{{ application.solution }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Team Details -->
+                        <div class="mb-4">
+                            <h5>Team Details</h5>
+                            <div class="mb-3">
+                                <label for="team_members" class="form-label">Team Members</label>
+                                <textarea class="form-control" id="team_members" name="team_members" rows="3" placeholder="Enter team member names (one per line)" required>{{ application.team_members }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Components and Cost -->
+                        <div class="mb-4">
+                            <h5>Required Components</h5>
+                            <div id="components-container">
+                                {% for component in application.required_components.split('\n') %}
+                                {% if component.strip() %}
+                                {% set parts = component.split(':') %}
+                                <div class="row mb-2 component-row">
+                                    <div class="col">
+                                        <input type="text" class="form-control" name="component_name[]" placeholder="Component Name" value="{{ parts[0].strip() }}" required>
+                                    </div>
+                                    <div class="col">
+                                        <input type="number" class="form-control" name="component_cost[]" placeholder="Cost (₹)" value="{{ parts[1].strip() }}" step="0.01" min="0" required>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-danger remove-component">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-secondary mt-2" id="add-component">
+                                <i class="fas fa-plus me-2"></i>Add Component
+                            </button>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('view_application', id=application.id) }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Resubmit Application</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('components-container');
+    const addButton = document.getElementById('add-component');
+
+    addButton.addEventListener('click', function() {
+        const row = document.createElement('div');
+        row.className = 'row mb-2 component-row';
+        row.innerHTML = `
+            <div class="col">
+                <input type="text" class="form-control" name="component_name[]" placeholder="Component Name" required>
+            </div>
+            <div class="col">
+                <input type="number" class="form-control" name="component_cost[]" placeholder="Cost (₹)" step="0.01" min="0" required>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-danger remove-component">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-component')) {
+            e.target.closest('.component-row').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

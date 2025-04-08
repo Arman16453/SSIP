@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>SSIP Funding Application Details</h2>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>Project: {{ application.project_title }}</h4>
+            <p>Application Number: {{ application.application_number }}</p>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Required Components:</h5>
+                    <pre class="bg-light p-3">{{ funding.required_components }}</pre>
+                </div>
+                <div class="col-md-6">
+                    <h5>Total Estimated Cost:</h5>
+                    <p class="lead">₹{{ funding.total_cost }}</p>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <h5>Approval Status:</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Level</th>
+                                <th>Status</th>
+                                <th>Remarks</th>
+                                <th>Review Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Department</td>
+                                <td><span class="badge badge-{{ funding.dept_status }}">{{ funding.dept_status }}</span></td>
+                                <td>{{ funding.dept_remarks or '-' }}</td>
+                                <td>{{ funding.dept_review_date or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td>College</td>
+                                <td><span class="badge badge-{{ funding.college_status }}">{{ funding.college_status }}</span></td>
+                                <td>{{ funding.college_remarks or '-' }}</td>
+                                <td>{{ funding.college_review_date or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td>Principal</td>
+                                <td><span class="badge badge-{{ funding.principal_status }}">{{ funding.principal_status }}</span></td>
+                                <td>{{ funding.principal_remarks or '-' }}</td>
+                                <td>{{ funding.principal_review_date or '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if funding.principal_status == 'approved' %}
+            <div class="mt-4">
+                <a href="{{ url_for('purchase_list', id=funding.id) }}" class="btn btn-primary">Manage Purchase List</a>
+                <a href="{{ url_for('utilization_certificate', id=funding.id) }}" class="btn btn-success">Submit Utilization Certificate</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

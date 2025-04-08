@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Funding Request Details</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Original Application Details -->
+                    <div class="mb-4">
+                        <h5>Project Details</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="30%">Application Number</th>
+                                    <td>{{ funding.ssip_application.application_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Project Title</th>
+                                    <td>{{ funding.ssip_application.project_title }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Estimated Cost</th>
+                                    <td>₹{{ "%.2f"|format(funding.ssip_application.total_cost) }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Actual Cost</th>
+                                    <td>₹{{ "%.2f"|format(funding.actual_cost) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Bill Details -->
+                    <div class="mb-4">
+                        <h5>Bill Details</h5>
+                        {% if funding.bill_path %}
+                        <p><a href="{{ url_for('static', filename=funding.bill_path) }}" target="_blank" class="btn btn-sm btn-primary">
+                            <i class="fas fa-file-invoice me-2"></i>View Bill
+                        </a></p>
+                        {% endif %}
+                        {% if funding.remarks %}
+                        <div class="alert alert-info">
+                            <strong>Remarks:</strong> {{ funding.remarks }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Approval Timeline -->
+                    <div class="timeline mb-4">
+                        <h5 class="mb-3">Approval Status</h5>
+                        
+                        <!-- Department Review -->
+                        <div class="timeline-item">
+                            <div class="timeline-badge {% if funding.dept_status == 'approved' %}bg-success{% elif funding.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Department Coordinator Review</h6>
+                                <p><strong>Status:</strong> {{ funding.dept_status|title }}</p>
+                                {% if funding.dept_remarks %}
+                                <p><strong>Remarks:</strong> {{ funding.dept_remarks }}</p>
+                                {% endif %}
+                                {% if funding.dept_review_date %}
+                                <small class="text-muted">{{ funding.dept_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                {% endif %}
+                                
+                                {% if current_user.is_dept_coordinator and funding.dept_status == 'pending' %}
+                                <div class="mt-3">
+                                    <form action="{{ url_for('dept_review_funding', id=funding.id) }}" method="POST" class="review-form">
+                                        <div class="mb-3">
+                                            <label for="remarks" class="form-label">Remarks</label>
+                                            <textarea class="form-control" name="remarks" rows="2"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                                            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- College Review -->
+                        <div class="timeline-item">
+                            <div class="timeline-badge {% if funding.college_status == 'approved' %}bg-success{% elif funding.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <i class="fas fa-university"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>College Coordinator Review</h6>
+                                <p><strong>Status:</strong> {{ funding.college_status|title }}</p>
+                                {% if funding.college_remarks %}
+                                <p><strong>Remarks:</strong> {{ funding.college_remarks }}</p>
+                                {% endif %}
+                                {% if funding.college_review_date %}
+                                <small class="text-muted">{{ funding.college_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                {% endif %}
+                                
+                                {% if current_user.is_college_coordinator and funding.dept_status == 'approved' and funding.college_status == 'pending' %}
+                                <div class="mt-3">
+                                    <form action="{{ url_for('college_review_funding', id=funding.id) }}" method="POST" class="review-form">
+                                        <div class="mb-3">
+                                            <label for="remarks" class="form-label">Remarks</label>
+                                            <textarea class="form-control" name="remarks" rows="2"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                                            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Principal Review -->
+                        <div class="timeline-item">
+                            <div class="timeline-badge {% if funding.principal_status == 'approved' %}bg-success{% elif funding.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h6>Principal Review</h6>
+                                <p><strong>Status:</strong> {{ funding.principal_status|title }}</p>
+                                {% if funding.principal_remarks %}
+                                <p><strong>Remarks:</strong> {{ funding.principal_remarks }}</p>
+                                {% endif %}
+                                {% if funding.principal_review_date %}
+                                <small class="text-muted">{{ funding.principal_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                {% endif %}
+                                
+                                {% if current_user.is_principal and funding.college_status == 'approved' and funding.principal_status == 'pending' %}
+                                <div class="mt-3">
+                                    <form action="{{ url_for('principal_review_funding', id=funding.id) }}" method="POST" class="review-form">
+                                        <div class="mb-3">
+                                            <label for="remarks" class="form-label">Remarks</label>
+                                            <textarea class="form-control" name="remarks" rows="2"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                                            <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('view_application', id=funding.ssip_application.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Application
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 30px;
+}
+
+.timeline-badge {
+    position: absolute;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    text-align: center;
+    color: white;
+    line-height: 36px;
+}
+
+.timeline-content {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #ddd;
+}
+</style>
+{% endblock %}

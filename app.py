@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from itsdangerous import URLSafeTimedSerializer
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -9,6 +9,7 @@ from datetime import datetime
 import os
 import json
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -19,8 +20,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
-app.config['MAIL_PASSWORD'] = 'your-password'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'your-email@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'your-app-password')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME', 'your-email@gmail.com')
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Initialize serializer for secure tokens
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -39,6 +42,20 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+def send_email(subject, recipient, body):
+    """Send an email using Flask-Mail."""
+    try:
+        msg = Message(
+            subject,
+            recipients=[recipient],
+            body=body
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
 
 # Models
 class User(UserMixin, db.Model):
@@ -59,10 +76,6 @@ class Application(db.Model):
     team_members = db.Column(db.Text, nullable=False)
     required_components = db.Column(db.Text, nullable=False)
     total_cost = db.Column(db.Float, nullable=False)
-    mentor_name = db.Column(db.String(100), nullable=True)
-    mentor_email = db.Column(db.String(120), nullable=True)
-    mentor_approval = db.Column(db.Boolean, default=False)
-    mentor_approval_date = db.Column(db.DateTime, nullable=True)
     dept_status = db.Column(db.String(20), default='pending')
     dept_remarks = db.Column(db.Text)
     dept_review_date = db.Column(db.DateTime)
@@ -73,11 +86,10 @@ class Application(db.Model):
     principal_remarks = db.Column(db.Text)
     principal_review_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     purchase_lists = db.relationship('PurchaseList', backref='application', lazy=True)
     utilization_certificates = db.relationship('UtilizationCertificate', backref='application', lazy=True)
-    notifications = db.relationship('Notification', backref=db.backref('application', lazy=True), lazy=True)
+    application_notifications = db.relationship('Notification', backref='related_application', lazy=True)
 
     def __repr__(self):
         return f'<Application {self.application_number}>'
@@ -115,15 +127,45 @@ class UtilizationCertificate(db.Model):
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    type = db.Column(db.String(20), nullable=False)  # 'approval', 'rejection', 'comment'
-    read = db.Column(db.Boolean, default=False)
+    message = db.Column(db.String(500), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # 'approval', 'rejection', etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
+
+    user = db.relationship('User', backref='notifications')
+
+class FundingApplication(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
+    actual_cost = db.Column(db.Float, nullable=False)
+    bill_path = db.Column(db.String(255))
+    remarks = db.Column(db.Text)
+    dept_status = db.Column(db.String(20), default='pending')
+    dept_remarks = db.Column(db.Text)
+    dept_review_date = db.Column(db.DateTime)
+    college_status = db.Column(db.String(20), default='pending')
+    college_remarks = db.Column(db.Text)
+    college_review_date = db.Column(db.DateTime)
+    principal_status = db.Column(db.String(20), default='pending')
+    principal_remarks = db.Column(db.Text)
+    principal_review_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
-    user = db.relationship('User', backref=db.backref('notifications', lazy=True), lazy=True)
+    # Define the relationship only in FundingApplication
+    ssip_application = db.relationship('Application', backref=db.backref('funding_request', lazy=True))
+
+def create_notification(application, user, message, type='info'):
+    """Create a notification for a user regarding an application."""
+    notification = Notification(
+        user_id=user.id,
+        application_id=application.id,
+        message=message,
+        type=type
+    )
+    db.session.add(notification)
+    db.session.commit()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -290,16 +332,24 @@ def new_application():
             
             # Process components and costs
             components = []
+            current_time = datetime.utcnow()
+            application_number = f"SSIP{current_time.strftime('%Y%m%d%H%M%S')}"
+            
+            # Get total cost with validation
+            total_cost = request.form.get('total_cost', '0')
+            try:
+                total_cost = float(total_cost)
+            except (ValueError, TypeError):
+                total_cost = 0.0
+            
             application = Application(
                 application_number=application_number,
                 project_title=request.form.get('project_title'),
                 problem_statement=request.form.get('problem_statement'),
                 solution=request.form.get('solution'),
-                team_members=json.dumps(request.form.getlist('team_member[]')),
+                team_members=team_members_json,
                 required_components=json.dumps(request.form.getlist('component[]')),
-                total_cost=float(request.form.get('total_cost')),
-                mentor_name=request.form.get('mentor_name'),
-                mentor_email=request.form.get('mentor_email'),
+                total_cost=total_cost,
                 user_id=current_user.id
             )
             
@@ -700,7 +750,6 @@ def reject_application(id):
 @login_required
 def purchase_list(id):
     application = Application.query.get_or_404(id)
-    
     # Only allow if application is approved
     if application.principal_status != 'approved':
         flash('Purchase list can only be created for approved applications', 'danger')
@@ -1071,6 +1120,277 @@ def edit_application(id):
             flash('Error updating application: ' + str(e), 'danger')
     
     return render_template('edit_application.html', application=application)
+
+@app.route('/new_funding_application/<int:application_id>', methods=['GET', 'POST'])
+@login_required
+def new_funding_application(application_id):
+    application = Application.query.get_or_404(application_id)
+    
+    # Check if user owns this application or has appropriate role
+    if not (current_user.id == application.user_id or current_user.role in ['dept_coord', 'college_coord', 'principal']):
+        flash('You do not have permission to access this application', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Check if application is approved by department
+    if application.dept_status != 'approved':
+        flash('Application must be approved by department before submitting funding request', 'warning')
+        return redirect(url_for('view_application', id=application_id))
+    
+    # Check if funding application already exists
+    if FundingApplication.query.filter_by(application_id=application_id).first():
+        flash('Funding application already exists for this project', 'warning')
+        return redirect(url_for('view_application', id=application_id))
+    
+    if request.method == 'POST':
+        funding = FundingApplication(
+            application_id=application_id,
+            required_components=request.form.get('required_components'),
+            total_cost=float(request.form.get('total_cost'))
+        )
+        db.session.add(funding)
+        db.session.commit()
+        
+        flash('Funding application submitted successfully', 'success')
+        return redirect(url_for('view_funding_application', id=funding.id))
+    
+    return render_template('new_funding_application.html', application=application)
+
+@app.route('/view_funding_application/<int:id>')
+@login_required
+def view_funding_application(id):
+    funding = FundingApplication.query.get_or_404(id)
+    application = funding.ssip_application
+    
+    # Check if user owns this application or has appropriate role
+    if not (current_user.id == application.user_id or current_user.role in ['dept_coord', 'college_coord', 'principal']):
+        flash('You do not have permission to access this application', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('view_funding_application.html', funding=funding, application=application)
+
+@app.route('/approve_funding_dept/<int:id>', methods=['POST'])
+@login_required
+def approve_funding_dept(id):
+    if current_user.role != 'dept_coord':
+        flash('You do not have permission to approve department funding', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    funding = FundingApplication.query.get_or_404(id)
+    funding.dept_status = 'approved'
+    funding.dept_remarks = request.form.get('remarks')
+    funding.dept_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    flash('Funding application approved at department level', 'success')
+    return redirect(url_for('view_funding_application', id=id))
+
+@app.route('/approve_funding_college/<int:id>', methods=['POST'])
+@login_required
+def approve_funding_college(id):
+    if current_user.role != 'college_coord':
+        flash('You do not have permission to approve college funding', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    funding = FundingApplication.query.get_or_404(id)
+    
+    if funding.dept_status != 'approved':
+        flash('Funding must be approved by department first', 'warning')
+        return redirect(url_for('view_funding_application', id=id))
+    
+    funding.college_status = 'approved'
+    funding.college_remarks = request.form.get('remarks')
+    funding.college_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    flash('Funding application approved at college level', 'success')
+    return redirect(url_for('view_funding_application', id=id))
+
+@app.route('/approve_funding_principal/<int:id>', methods=['POST'])
+@login_required
+def approve_funding_principal(id):
+    if current_user.role != 'principal':
+        flash('You do not have permission to approve principal funding', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    funding = FundingApplication.query.get_or_404(id)
+    
+    if funding.college_status != 'approved':
+        flash('Funding must be approved by college first', 'warning')
+        return redirect(url_for('view_funding_application', id=id))
+    
+    funding.principal_status = 'approved'
+    funding.principal_remarks = request.form.get('remarks')
+    funding.principal_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    flash('Funding application approved by principal', 'success')
+    return redirect(url_for('view_funding_application', id=id))
+
+@app.route('/resubmit_application/<int:id>', methods=['GET', 'POST'])
+@login_required
+def resubmit_application(id):
+    application = Application.query.get_or_404(id)
+    if request.method == 'POST':
+        # Update application with new information
+        application.project_title = request.form.get('project_title')
+        application.problem_statement = request.form.get('problem_statement')
+        application.solution = request.form.get('solution')
+        application.team_members = request.form.get('team_members')
+        
+        # Handle components and cost
+        components = []
+        total_cost = 0
+        component_names = request.form.getlist('component_name[]')
+        component_costs = request.form.getlist('component_cost[]')
+        
+        for name, cost in zip(component_names, component_costs):
+            if name and cost:
+                components.append(f"{name}: {cost}")
+                total_cost += float(cost)
+        
+        application.required_components = '\n'.join(components)
+        application.total_cost = total_cost
+        
+        # Reset status
+        application.dept_status = 'pending'
+        application.dept_remarks = None
+        application.dept_review_date = None
+        application.college_status = 'pending'
+        application.college_remarks = None
+        application.college_review_date = None
+        application.principal_status = 'pending'
+        application.principal_remarks = None
+        application.principal_review_date = None
+        
+        db.session.commit()
+        flash('Application resubmitted successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('resubmit_application.html', application=application)
+
+@app.route('/submit_funding/<int:application_id>', methods=['GET', 'POST'])
+@login_required
+def submit_funding(application_id):
+    application = Application.query.get_or_404(application_id)
+    if request.method == 'POST':
+        # Create new funding application
+        funding = FundingApplication(
+            application_id=application.id,
+            actual_cost=float(request.form.get('actual_cost')),
+            remarks=request.form.get('remarks')
+        )
+        
+        # Handle bill upload
+        if 'bill' in request.files:
+            bill = request.files['bill']
+            if bill.filename:
+                # Save bill with secure filename
+                filename = secure_filename(f"{application.application_number}_bill_{bill.filename}")
+                bill.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                funding.bill_path = filename
+        
+        db.session.add(funding)
+        db.session.commit()
+        
+        flash('Funding application submitted successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('submit_funding.html', application=application)
+
+@app.route('/view_funding/<int:id>')
+@login_required
+def view_funding(id):
+    funding = FundingApplication.query.get_or_404(id)
+    return render_template('view_funding.html', funding=funding)
+
+@app.route('/dept_review_funding/<int:id>', methods=['POST'])
+@login_required
+def dept_review_funding(id):
+    if not current_user.is_dept_coordinator:
+        abort(403)
+    
+    funding = FundingApplication.query.get_or_404(id)
+    action = request.form.get('action')
+    remarks = request.form.get('remarks')
+    
+    if action == 'approve':
+        funding.dept_status = 'approved'
+        msg_type = 'success'
+        message = 'Funding request approved by department coordinator'
+    else:
+        funding.dept_status = 'rejected'
+        msg_type = 'danger'
+        message = 'Funding request rejected by department coordinator'
+    
+    funding.dept_remarks = remarks
+    funding.dept_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    create_notification(funding.ssip_application, funding.ssip_application.user, message)
+    flash(message, msg_type)
+    return redirect(url_for('view_funding', id=id))
+
+@app.route('/college_review_funding/<int:id>', methods=['POST'])
+@login_required
+def college_review_funding(id):
+    if not current_user.is_college_coordinator:
+        abort(403)
+    
+    funding = FundingApplication.query.get_or_404(id)
+    if funding.dept_status != 'approved':
+        flash('Funding request must be approved by department coordinator first', 'danger')
+        return redirect(url_for('view_funding', id=id))
+    
+    action = request.form.get('action')
+    remarks = request.form.get('remarks')
+    
+    if action == 'approve':
+        funding.college_status = 'approved'
+        msg_type = 'success'
+        message = 'Funding request approved by college coordinator'
+    else:
+        funding.college_status = 'rejected'
+        msg_type = 'danger'
+        message = 'Funding request rejected by college coordinator'
+    
+    funding.college_remarks = remarks
+    funding.college_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    create_notification(funding.ssip_application, funding.ssip_application.user, message)
+    flash(message, msg_type)
+    return redirect(url_for('view_funding', id=id))
+
+@app.route('/principal_review_funding/<int:id>', methods=['POST'])
+@login_required
+def principal_review_funding(id):
+    if not current_user.is_principal:
+        abort(403)
+    
+    funding = FundingApplication.query.get_or_404(id)
+    if funding.college_status != 'approved':
+        flash('Funding request must be approved by college coordinator first', 'danger')
+        return redirect(url_for('view_funding', id=id))
+    
+    action = request.form.get('action')
+    remarks = request.form.get('remarks')
+    
+    if action == 'approve':
+        funding.principal_status = 'approved'
+        msg_type = 'success'
+        message = 'Funding request approved by principal'
+    else:
+        funding.principal_status = 'rejected'
+        msg_type = 'danger'
+        message = 'Funding request rejected by principal'
+    
+    funding.principal_remarks = remarks
+    funding.principal_review_date = datetime.utcnow()
+    db.session.commit()
+    
+    create_notification(funding.ssip_application, funding.ssip_application.user, message)
+    flash(message, msg_type)
+    return redirect(url_for('view_funding', id=id))
 
 if __name__ == '__main__':
     # Create upload directories if they don't exist

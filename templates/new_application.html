@@ -17,17 +17,6 @@
                             <label for="project_title">Project Title</label>
                             <input type="text" class="form-control" id="project_title" name="project_title" required>
                         </div>
-                        
-                        <h3 class="mt-4">Mentor Details</h3>
-                        <div class="form-group">
-                            <label for="mentor_name">Mentor Name</label>
-                            <input type="text" class="form-control" id="mentor_name" name="mentor_name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="mentor_email">Mentor Email</label>
-                            <input type="email" class="form-control" id="mentor_email" name="mentor_email" required>
-                            <small class="form-text text-muted">Your mentor will be notified to approve this application.</small>
-                        </div>
 
                         <div class="mb-3">
                             <label for="problem_statement" class="form-label">Problem Statement</label>
@@ -50,31 +39,9 @@
                             <button type="button" class="btn btn-secondary btn-sm" onclick="addTeamMember()">Add Team Member</button>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Required Components</label>
-                            <div id="components">
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control" name="component[]" placeholder="Component Name" required>
-                                    <input type="number" step="0.01" class="form-control" name="cost[]" placeholder="Cost" required onchange="calculateTotal()">
-                                    <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); calculateTotal()">Remove</button>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="addComponent()">Add Component</button>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Total Cost</label>
-                            <h4 id="total_cost">₹0.00</h4>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="total_cost" class="form-label">Total Cost</label>
-                            <input type="number" class="form-control" id="total-cost" name="total_cost" readonly>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="quotations" class="form-label">Upload Quotations (PDF)</label>
-                            <input type="file" class="form-control" id="quotations" name="quotations" accept=".pdf" multiple>
+                        <div class="alert alert-info">
+                            <h5>Next Steps:</h5>
+                            <p>After your SSIP application is approved by the department, you'll be able to submit a separate funding application for your project's budget and components.</p>
                         </div>
 
                         <div class="d-grid gap-2">
@@ -98,29 +65,6 @@ function addTeamMember() {
         <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">Remove</button>
     `;
     container.appendChild(div);
-}
-
-function addComponent() {
-    const container = document.getElementById('components');
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-        <input type="text" class="form-control" name="component[]" placeholder="Component Name" required>
-        <input type="number" step="0.01" class="form-control" name="cost[]" placeholder="Cost" required onchange="calculateTotal()">
-        <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); calculateTotal()">Remove</button>
-    `;
-    container.appendChild(div);
-}
-
-function calculateTotal() {
-    const costs = document.getElementsByName('cost[]');
-    let total = 0;
-    for (const cost of costs) {
-        if (cost.value) {
-            total += parseFloat(cost.value);
-        }
-    }
-    document.getElementById('total_cost').textContent = `₹${total.toFixed(2)}`;
 }
 </script>
 {% endblock %}

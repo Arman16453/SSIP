@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>SSIP Funding Application</h2>
+    <div class="card">
+        <div class="card-body">
+            <h4>Project: {{ application.project_title }}</h4>
+            <p>Application Number: {{ application.application_number }}</p>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label for="required_components">Required Components (List each component on a new line)</label>
+                    <textarea class="form-control" id="required_components" name="required_components" rows="5" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="total_cost">Total Estimated Cost (₹)</label>
+                    <input type="number" step="0.01" class="form-control" id="total_cost" name="total_cost" required>
+                </div>
+
+                <div class="alert alert-info">
+                    <h5>Important Notes:</h5>
+                    <ul>
+                        <li>Please ensure all component details are accurate</li>
+                        <li>The funding application will be reviewed by department, college, and principal</li>
+                        <li>You will need to submit purchase lists and quotations after approval</li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit Funding Application</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
