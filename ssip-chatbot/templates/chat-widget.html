@@ -1,0 +1,32 @@
+<!-- Chat Widget -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}">
+
+<div class="chat-widget-container">
+    <button class="chat-widget-button">
+        <i class="fas fa-comments"></i>
+    </button>
+
+    <div class="chat-widget">
+        <div class="chat-header">
+            <span>SSIP Assistant</span>
+            <button class="chat-close">&times;</button>
+        </div>
+        
+        <div class="chat-messages">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <form class="chat-input-form">
+                <input type="text" class="chat-input" placeholder="Type your message..." required>
+                <button type="submit" class="chat-send">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/chat-widget.js') }}"></script>

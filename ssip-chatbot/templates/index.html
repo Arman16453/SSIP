@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSIP AI Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row min-vh-100">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar p-3 bg-dark">
+                <h4 class="text-white mb-4">SSIP Assistant</h4>
+                <div class="d-flex flex-column">
+                    <button class="btn btn-outline-light mb-2" onclick="newChat()">New Chat</button>
+                    <button class="btn btn-outline-light mb-2" onclick="toggleVoiceInput()">Voice Input</button>
+                    <button class="btn btn-outline-light mb-2" onclick="downloadHistory()">Download History</button>
+                </div>
+            </div>
+
+            <!-- Main Chat Area -->
+            <div class="col-md-9 col-lg-10 main-content p-0">
+                <!-- Chat Header -->
+                <div class="chat-header p-3 bg-light border-bottom">
+                    <h5 class="m-0">SSIP AI Assistant</h5>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="chat-messages p-3" id="chatMessages">
+                    <!-- Welcome Message -->
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <p>Hello! I'm your SSIP AI Assistant. I can help you with:</p>
+                            <ul>
+                                <li>Information about SSIP schemes</li>
+                                <li>Funding opportunities</li>
+                                <li>Project submission guidelines</li>
+                                <li>Important deadlines</li>
+                                <li>Application process</li>
+                            </ul>
+                            <p>How can I assist you today?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="chat-input p-3 border-top">
+                    <form id="chatForm" class="d-flex gap-2">
+                        <input type="text" id="userInput" class="form-control" placeholder="Type your message..." required>
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+</body>
+</html>
