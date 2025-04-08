@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Mentor Approval - {{ application.application_number }}</h3>
+                </div>
+                <div class="card-body">
+                    <h4>Project Details</h4>
+                    <dl class="row">
+                        <dt class="col-sm-3">Project Title</dt>
+                        <dd class="col-sm-9">{{ application.project_title }}</dd>
+
+                        <dt class="col-sm-3">Problem Statement</dt>
+                        <dd class="col-sm-9">{{ application.problem_statement }}</dd>
+
+                        <dt class="col-sm-3">Solution</dt>
+                        <dd class="col-sm-9">{{ application.solution }}</dd>
+
+                        <dt class="col-sm-3">Team Members</dt>
+                        <dd class="col-sm-9">
+                            <ul class="list-unstyled">
+                                {% for member in application.team_members|from_json %}
+                                <li>{{ member }}</li>
+                                {% endfor %}
+                            </ul>
+                        </dd>
+
+                        <dt class="col-sm-3">Required Components</dt>
+                        <dd class="col-sm-9">
+                            <ul class="list-unstyled">
+                                {% for component in application.required_components|from_json %}
+                                <li>{{ component.name }} - ₹{{ "%.2f"|format(component.cost) }}</li>
+                                {% endfor %}
+                            </ul>
+                        </dd>
+
+                        <dt class="col-sm-3">Total Cost</dt>
+                        <dd class="col-sm-9">₹{{ "%.2f"|format(application.total_cost) }}</dd>
+                    </dl>
+
+                    <hr>
+
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="remarks">Remarks (required for rejection)</label>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
+                        </div>
+
+                        <div class="mt-4 text-center">
+                            <button type="submit" name="action" value="approve" class="btn btn-success btn-lg mx-2">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg mx-2">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
