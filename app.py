@@ -1452,7 +1452,7 @@ def approve_application(id, level):
         # Can only approve if department has approved
         if application.dept_status != 'approved':
             flash('Department approval is required first', 'danger')
-            return redirect(url_for('view_application', id=id))
+            return redirect(url_for('dashboard'))
             
         application.college_status = 'approved'
         application.college_remarks = remarks
@@ -1472,7 +1472,7 @@ def approve_application(id, level):
         # Can only approve if both department and college have approved
         if application.dept_status != 'approved' or application.college_status != 'approved':
             flash('Both department and college approval are required first', 'error')
-            return redirect(url_for('view_application', id=id))
+            return redirect(url_for('dashboard'))
             
         application.principal_status = 'approved'
         application.principal_remarks = remarks
@@ -2018,18 +2018,53 @@ def chatbot():
             
         user_message = data['message'].lower().strip()
         
-        # Simple responses
-        if 'what' in user_message and 'ssip' in user_message:
-            return jsonify({'response': 'SSIP (Student Startup and Innovation Policy) is a Gujarat government initiative that supports innovative student projects with funding up to ₹2,00,000. It helps students develop entrepreneurship skills and turn their ideas into reality.'})
+        # Define responses for different types of questions
+        responses = {
+            'what is ssip': 'SSIP stands for Student Startup and Innovation Policy. It is an initiative by the Government of Gujarat to support students in turning their innovative ideas into real projects or startups.',
             
-        if 'how' in user_message or 'apply' in user_message:
-            return jsonify({'response': 'To apply for SSIP:\n1. Log in to your account\n2. Click "Submit New Application"\n3. Fill in your project details\n4. Upload required documents\n5. Submit for review'})
+            'who can apply': 'Any student studying in a recognized institute in Gujarat can apply for SSIP support, regardless of their branch or year. This includes diploma students as well.',
             
-        if 'fund' in user_message or 'money' in user_message:
-            return jsonify({'response': 'SSIP provides funding up to ₹2,00,000 for approved projects. The amount depends on your project requirements and evaluation.'})
+            'how to submit': 'To submit your SSIP project:\n1. Log in to your account\n2. Click "Submit New Application"\n3. Fill out the project details\n4. Upload required documents\n5. Submit for review\n\nYour application will be reviewed by your department coordinator, college coordinator, and principal.',
             
-        # Default response
-        return jsonify({'response': 'I can help you with SSIP applications, funding, and processes. Try asking:\n- What is SSIP?\n- How to apply?\n- About funding\n- Required documents'})
+            'what support': 'SSIP provides:\n1. Financial support for prototyping (up to ₹2 lakh)\n2. Mentorship from experts\n3. Access to labs and equipment\n4. Expert guidance\n5. Help with patent filing (in some cases)',
+            
+            'funding': 'You can receive funding up to ₹2 lakh for your project. The amount depends on:\n1. Project innovation\n2. Scalability\n3. Resource requirements\n4. Recommendation by SSIP committee',
+            
+            'mentor': 'A faculty member or external expert assigned by your college\'s SSIP cell will guide you as a mentor throughout your project. They will help with technical guidance and project development.',
+            
+            'team': 'A team can have up to 5 members, but the exact number depends on your college\'s SSIP policy. Make sure all team members are currently enrolled students.',
+            
+            'documents': 'Required documents for SSIP submission:\n1. Project proposal\n2. Team details\n3. Problem statement\n4. Proof of concept/prototype (if available)\n5. Budget estimation\n6. Implementation timeline',
+            
+            'deadline': 'The deadline for SSIP applications varies by college. Please check with your SSIP coordinator or college website for exact dates. However, you can generally apply throughout the academic year.',
+            
+            'semester': 'Yes, students from any semester can apply for SSIP funding as long as they have an innovative idea and meet the eligibility criteria.',
+            
+            'diploma': 'Yes, diploma students in recognized institutes are eligible to apply under SSIP. The application process and funding opportunities are the same as for degree students.'
+        }
+        
+        # Find the best matching response
+        best_response = None
+        for key in responses:
+            if any(word in user_message for word in key.split()):
+                best_response = responses[key]
+                break
+        
+        # If no specific match found, provide a general response
+        if not best_response:
+            best_response = """I can help you with information about SSIP. You can ask me about:
+1. What is SSIP
+2. Eligibility criteria
+3. How to apply
+4. Funding details
+5. Required documents
+6. Team size
+7. Mentorship
+8. Application deadlines
+
+What would you like to know?"""
+        
+        return jsonify({'response': best_response})
 
     except Exception as e:
         print(f"Chatbot error: {str(e)}")
