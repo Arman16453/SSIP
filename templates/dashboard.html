@@ -91,7 +91,7 @@
                         <p>Are you sure you want to approve this application?</p>
                     </div>
                     <div class="modal-footer">
-                        <form action="{{ url_for('approve_application', id=application.id) }}" method="POST">
+                        <form action="{% if current_user.role == 'dept_coord' %}{{ url_for('approve_dept', id=application.id) }}{% elif current_user.role == 'college_coord' %}{{ url_for('approve_college', id=application.id) }}{% elif current_user.role == 'principal' %}{{ url_for('approve_principal', id=application.id) }}{% endif %}" method="POST">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-success">Approve</button>
                         </form>
@@ -108,7 +108,7 @@
                         <h5 class="modal-title">Reject Application</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <form action="{{ url_for('reject_application', id=application.id) }}" method="POST">
+                    <form action="{% if current_user.role == 'dept_coord' %}{{ url_for('reject_dept', id=application.id) }}{% elif current_user.role == 'college_coord' %}{{ url_for('reject_college', id=application.id) }}{% elif current_user.role == 'principal' %}{{ url_for('reject_principal', id=application.id) }}{% endif %}" method="POST">
                         <div class="modal-body">
                             <div class="mb-3">
                                 <label for="reason" class="form-label">Reason for Rejection</label>

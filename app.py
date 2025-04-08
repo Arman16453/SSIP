@@ -191,13 +191,14 @@ def dashboard():
         # Show student's applications
         applications = Application.query.filter_by(user_id=current_user.id).all()
         purchase_items = []
+        utilization_certificates = []  # Initialize empty list for students
         for app in applications:
             if app.principal_status == 'approved':
                 items = PurchaseList.query.filter_by(application_id=app.id).all()
                 purchase_items.extend(items)
         approved_applications = []
     elif current_user.role == 'dept_coord':
-        # Show pending applications
+        # Show only pending applications
         applications = Application.query.filter_by(dept_status='pending').all()
         
         # Get pending purchase items
@@ -459,31 +460,29 @@ def mentor_approve_application(id, token):
 @login_required
 def approve_dept(id):
     if current_user.role != 'dept_coord':
-        flash('Unauthorized access', 'danger')
+        flash('You do not have permission to approve applications.', 'danger')
         return redirect(url_for('dashboard'))
     
     application = Application.query.get_or_404(id)
-    if not application.mentor_approval:
-        flash('Application must be approved by mentor first', 'danger')
+    
+    if application.dept_status != 'pending':
+        flash('Application has already been processed.', 'warning')
         return redirect(url_for('dashboard'))
     
     application.dept_status = 'approved'
     application.dept_review_date = datetime.utcnow()
     
-    # Notify student
-    student_msg = f'Your application {application.application_number} has been approved by department coordinator'
-    create_notification(application, application.applicant, student_msg, type='approval')
-    send_email('Application Approved', application.applicant.email, student_msg)
-    
-    # Find college coordinator
-    college_coord = User.query.filter_by(role='college_coordinator').first()
-    if college_coord:
-        coord_msg = f'New application {application.application_number} requires your review'
-        create_notification(application, college_coord, coord_msg, type='pending')
-        send_email('New Application Requires Review', college_coord.email, coord_msg)
+    # Create notification for student
+    notification = Notification(
+        application_id=application.id,
+        user_id=application.user_id,
+        message='Your application has been approved by the department coordinator.',
+        type='success'
+    )
+    db.session.add(notification)
     
     db.session.commit()
-    flash('Application approved successfully', 'success')
+    flash('Application approved successfully.', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/application/<int:id>/dept/reject', methods=['POST'])
@@ -527,20 +526,28 @@ def approve_college(id):
     application.college_status = 'approved'
     application.college_review_date = datetime.utcnow()
     
-    # Notify student
-    student_msg = f'Your application {application.application_number} has been approved by college coordinator'
-    create_notification(application, application.applicant, student_msg, type='approval')
-    send_email('Application Approved', application.applicant.email, student_msg)
+    # Create notification for student
+    student_notification = Notification(
+        application_id=application.id,
+        user_id=application.user_id,
+        message='Your application has been approved by the college coordinator.',
+        type='success'
+    )
+    db.session.add(student_notification)
     
-    # Find principal
+    # Create notification for principal
     principal = User.query.filter_by(role='principal').first()
     if principal:
-        principal_msg = f'New application {application.application_number} requires your review'
-        create_notification(application, principal, principal_msg, type='pending')
-        send_email('New Application Requires Review', principal.email, principal_msg)
+        principal_notification = Notification(
+            application_id=application.id,
+            user_id=principal.id,
+            message=f'Application {application.application_number} requires your review.',
+            type='info'
+        )
+        db.session.add(principal_notification)
     
     db.session.commit()
-    flash('Application approved successfully', 'success')
+    flash('Application approved successfully.', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/application/<int:id>/college/reject', methods=['POST'])
@@ -584,10 +591,14 @@ def approve_principal(id):
     application.principal_status = 'approved'
     application.principal_review_date = datetime.utcnow()
     
-    # Notify student
-    student_msg = f'Your application {application.application_number} has been approved by principal! You can now proceed with purchases.'
-    create_notification(application, application.applicant, student_msg, type='approval')
-    send_email('Application Approved', application.applicant.email, student_msg)
+    # Create notification for student
+    notification = Notification(
+        application_id=application.id,
+        user_id=application.user_id,
+        message='Your application has been approved by the principal.',
+        type='success'
+    )
+    db.session.add(notification)
     
     db.session.commit()
     flash('Application approved successfully', 'success')
