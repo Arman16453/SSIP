@@ -1,70 +1,154 @@
 {% extends "base.html" %}
 
-{% block title %}New Application{% endblock %}
-
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">New SSIP Application</h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
-                        <h3>Project Details</h3>
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">New SSIP Application</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {{ form.csrf_token }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
                         <div class="form-group">
-                            <label for="project_title">Project Title</label>
-                            <input type="text" class="form-control" id="project_title" name="project_title" required>
+                            <label for="project_title" class="form-label">Project Title <span class="text-danger">*</span></label>
+                            {{ form.project_title(class="form-control", required=true) }}
                         </div>
-
-                        <div class="mb-3">
-                            <label for="problem_statement" class="form-label">Problem Statement</label>
-                            <textarea class="form-control" id="problem_statement" name="problem_statement" rows="4" required></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="total_cost" class="form-label">Required Amount (₹) <span class="text-danger">*</span></label>
+                            {{ form.total_cost(class="form-control", type="number", step="0.01", min="0", required=true) }}
+                            <small class="text-muted">Enter the total amount required for your project</small>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label for="solution" class="form-label">Proposed Solution</label>
-                            <textarea class="form-control" id="solution" name="solution" rows="4" required></textarea>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="problem_statement" class="form-label">Problem Statement <span class="text-danger">*</span></label>
+                            {{ form.problem_statement(class="form-control", rows=4, required=true) }}
+                            <small class="text-muted">Clearly describe the problem you are trying to solve</small>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Team Members</label>
-                            <div id="team_members">
-                                <div class="input-group mb-2">
-                                    <input type="text" class="form-control" name="team_members[]" required>
-                                    <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">Remove</button>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="solution" class="form-label">Proposed Solution <span class="text-danger">*</span></label>
+                            {{ form.solution(class="form-control", rows=4, required=true) }}
+                            <small class="text-muted">Explain your proposed solution in detail</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="team_members" class="form-label">Team Members <span class="text-danger">*</span></label>
+                            {{ form.team_members(class="form-control", required=true) }}
+                            <small class="text-muted">Enter team member names separated by commas</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label class="form-label">Required Components <span class="text-danger">*</span></label>
+                            <div id="components-container">
+                                <div class="component-row mb-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="text" name="component_names[]" class="form-control" placeholder="Component Name" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" name="component_quantities[]" class="form-control" placeholder="Quantity" min="1" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="number" name="component_costs[]" class="form-control" placeholder="Cost per Unit (₹)" step="0.01" min="0" required>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-danger remove-component"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="addTeamMember()">Add Team Member</button>
+                            <button type="button" class="btn btn-secondary" id="add-component">
+                                <i class="fas fa-plus me-2"></i>Add Component
+                            </button>
                         </div>
-
-                        <div class="alert alert-info">
-                            <h5>Next Steps:</h5>
-                            <p>After your SSIP application is approved by the department, you'll be able to submit a separate funding application for your project's budget and components.</p>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Submit Application</button>
-                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Application
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
-function addTeamMember() {
-    const container = document.getElementById('team_members');
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-        <input type="text" class="form-control" name="team_members[]" required>
-        <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">Remove</button>
-    `;
-    container.appendChild(div);
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('components-container');
+    const addButton = document.getElementById('add-component');
+    
+    addButton.addEventListener('click', function() {
+        const newRow = document.createElement('div');
+        newRow.className = 'component-row mb-3';
+        newRow.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="text" name="component_names[]" class="form-control" placeholder="Component Name" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" name="component_quantities[]" class="form-control" placeholder="Quantity" min="1" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" name="component_costs[]" class="form-control" placeholder="Cost per Unit (₹)" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-danger remove-component"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        `;
+        container.appendChild(newRow);
+    });
+    
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-component')) {
+            const row = e.target.closest('.component-row');
+            if (container.children.length > 1) {
+                row.remove();
+            }
+        }
+    });
+
+    // Calculate total cost when component costs change
+    container.addEventListener('input', function(e) {
+        if (e.target.matches('input[name="component_costs[]"], input[name="component_quantities[]"]')) {
+            let total = 0;
+            const rows = container.getElementsByClassName('component-row');
+            
+            for (let row of rows) {
+                const quantity = parseFloat(row.querySelector('input[name="component_quantities[]"]').value) || 0;
+                const cost = parseFloat(row.querySelector('input[name="component_costs[]"]').value) || 0;
+                total += quantity * cost;
+            }
+            
+            document.getElementById('total_cost').value = total.toFixed(2);
+        }
+    });
+});
 </script>
 {% endblock %}

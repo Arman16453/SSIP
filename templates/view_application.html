@@ -1,138 +1,165 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0">Application Details</h3>
-                    <span class="badge {% if application.principal_status == 'approved' %}bg-success{% elif application.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
-                        {{ application.principal_status|title }}
-                    </span>
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>Application Details</h3>
+            <div class="badge-group">
+                <span class="badge {% if application.dept_status == 'approved' %}bg-success{% elif application.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} p-2">
+                    Department: {{ application.dept_status|title }}
+                </span>
+                <span class="badge {% if application.college_status == 'approved' %}bg-success{% elif application.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} p-2">
+                    College: {{ application.college_status|title }}
+                </span>
+                <span class="badge {% if application.principal_status == 'approved' %}bg-success{% elif application.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} p-2">
+                    Principal: {{ application.principal_status|title }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Application Number</h5>
+                    <p>{{ application.application_number }}</p>
+                    
+                    <h5>Project Title</h5>
+                    <p>{{ application.project_title }}</p>
+                    
+                    <h5>Problem Statement</h5>
+                    <p>{{ application.problem_statement }}</p>
+                    
+                    <h5>Solution</h5>
+                    <p>{{ application.solution }}</p>
                 </div>
+                <div class="col-md-6">
+                    <h5>Team Members</h5>
+                    <p>{{ application.team_members }}</p>
+                    
+                    <h5>Total Cost</h5>
+                    <p>₹{{ "%.2f"|format(application.total_cost) }}</p>
+                    
+                    <h5>Components</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Quantity</th>
+                                <th>Cost per Unit</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for component in application.components %}
+                            <tr>
+                                <td>{{ component.name }}</td>
+                                <td>{{ component.quantity }}</td>
+                                <td>₹{{ "%.2f"|format(component.cost_per_unit) }}</td>
+                                <td>₹{{ "%.2f"|format(component.quantity * component.cost_per_unit) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if current_user.role == 'dept_coord' and application.dept_status == 'pending' %}
+            <div class="card mb-3">
                 <div class="card-body">
-                    <div class="mb-4">
-                        <h5>Basic Information</h5>
-                        <p><strong>Application Number:</strong> {{ application.application_number }}</p>
-                        <p><strong>Project Title:</strong> {{ application.project_title }}</p>
-                        <p><strong>Submission Date:</strong> {{ application.created_at.strftime('%Y-%m-%d') }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <h5>Project Details</h5>
-                        <p><strong>Problem Statement:</strong></p>
-                        <p class="text-muted">{{ application.problem_statement }}</p>
-                        <p><strong>Proposed Solution:</strong></p>
-                        <p class="text-muted">{{ application.solution }}</p>
-                    </div>
-
-                    <div class="mb-4">
-                        <h5>Team & Cost Details</h5>
-                        <p><strong>Team Members:</strong> {{ application.team_members }}</p>
-                        <p><strong>Required Components:</strong></p>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Item</th>
-                                        <th>Cost (₹)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in application.required_components.split('\n') if item.strip() %}
-                                        {% set parts = item.split(':') %}
-                                        {% if parts|length > 1 %}
-                                        <tr>
-                                            <td>{{ parts[0].strip() }}</td>
-                                            <td>{{ parts[1].strip() }}</td>
-                                        </tr>
-                                        {% endif %}
-                                    {% endfor %}
-                                </tbody>
-                                <tfoot>
-                                    <tr class="table-primary">
-                                        <th>Total Cost</th>
-                                        <td>₹{{ "%.2f"|format(application.total_cost) }}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                    <h5>Department Coordinator Action</h5>
+                    <form method="POST" action="{{ url_for('approve_application', id=application.id, level='dept') }}" class="d-inline">
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Remarks</label>
+                            <textarea name="remarks" class="form-control" rows="3"></textarea>
                         </div>
-                    </div>
-
-                    <!-- Review Status Section -->
-                    <div class="mb-4">
-                        <h5>Review Status</h5>
-                        <div class="timeline">
-                            <!-- Department Coordinator Review -->
-                            <div class="timeline-item">
-                                <div class="timeline-badge {% if application.dept_status == 'approved' %}bg-success{% elif application.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
-                                    <i class="fas fa-user-tie"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h6>Department Coordinator Review</h6>
-                                    <p><strong>Status:</strong> {{ application.dept_status|title }}</p>
-                                    {% if application.dept_remarks %}
-                                    <p><strong>Remarks:</strong> {{ application.dept_remarks }}</p>
-                                    {% endif %}
-                                    {% if application.dept_review_date %}
-                                    <small class="text-muted">{{ application.dept_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <!-- College Coordinator Review -->
-                            <div class="timeline-item">
-                                <div class="timeline-badge {% if application.college_status == 'approved' %}bg-success{% elif application.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
-                                    <i class="fas fa-university"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h6>College Coordinator Review</h6>
-                                    <p><strong>Status:</strong> {{ application.college_status|title }}</p>
-                                    {% if application.college_remarks %}
-                                    <p><strong>Remarks:</strong> {{ application.college_remarks }}</p>
-                                    {% endif %}
-                                    {% if application.college_review_date %}
-                                    <small class="text-muted">{{ application.college_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <!-- Principal Review -->
-                            <div class="timeline-item">
-                                <div class="timeline-badge {% if application.principal_status == 'approved' %}bg-success{% elif application.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
-                                    <i class="fas fa-crown"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h6>Principal Review</h6>
-                                    <p><strong>Status:</strong> {{ application.principal_status|title }}</p>
-                                    {% if application.principal_remarks %}
-                                    <p><strong>Remarks:</strong> {{ application.principal_remarks }}</p>
-                                    {% endif %}
-                                    {% if application.principal_review_date %}
-                                    <small class="text-muted">{{ application.principal_review_date.strftime('%Y-%m-%d %H:%M') }}</small>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('reject_application', id=application.id, level='dept') }}" class="d-inline">
+                        <div class="mb-3">
+                            <textarea name="remarks" class="form-control" rows="3" placeholder="Rejection remarks"></textarea>
                         </div>
-                    </div>
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
 
-                    <!-- Action Buttons -->
-                    <div class="d-flex gap-2">
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-                        </a>
-                        
-                        {% if current_user.role == 'student' and application.principal_status == 'rejected' %}
-                        <a href="{{ url_for('resubmit_application', id=application.id) }}" class="btn btn-primary">
-                            <i class="fas fa-sync me-2"></i>Resubmit Application
-                        </a>
+            {% if current_user.role == 'college_coord' and application.dept_status == 'approved' and application.college_status == 'pending' %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5>College Coordinator Action</h5>
+                    <form method="POST" action="{{ url_for('approve_application', id=application.id, level='college') }}" class="d-inline">
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Remarks</label>
+                            <textarea name="remarks" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('reject_application', id=application.id, level='college') }}" class="d-inline">
+                        <div class="mb-3">
+                            <textarea name="remarks" class="form-control" rows="3" placeholder="Rejection remarks"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if current_user.role == 'principal' and application.dept_status == 'approved' and application.college_status == 'approved' and application.principal_status == 'pending' %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5>Principal Action</h5>
+                    <form method="POST" action="{{ url_for('approve_application', id=application.id, level='principal') }}" class="d-inline">
+                        <div class="mb-3">
+                            <label for="remarks" class="form-label">Remarks</label>
+                            <textarea name="remarks" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Approve</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('reject_application', id=application.id, level='principal') }}" class="d-inline">
+                        <div class="mb-3">
+                            <textarea name="remarks" class="form-control" rows="3" placeholder="Rejection remarks"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-body">
+                    <h5>Review History</h5>
+                    <div class="timeline">
+                        {% if application.dept_review_date %}
+                        <div class="timeline-item">
+                            <strong>Department Review:</strong>
+                            <p>Status: {{ application.dept_status|title }}</p>
+                            <p>Date: {{ application.dept_review_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            {% if application.dept_remarks %}
+                            <p>Remarks: {{ application.dept_remarks }}</p>
+                            {% endif %}
+                        </div>
                         {% endif %}
 
-                        {% if application.principal_status == 'approved' and current_user.role == 'student' %}
-                        <a href="{{ url_for('submit_funding', application_id=application.id) }}" class="btn btn-success">
-                            <i class="fas fa-file-invoice-dollar me-2"></i>Submit Funding Application
-                        </a>
+                        {% if application.college_review_date %}
+                        <div class="timeline-item">
+                            <strong>College Review:</strong>
+                            <p>Status: {{ application.college_status|title }}</p>
+                            <p>Date: {{ application.college_review_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            {% if application.college_remarks %}
+                            <p>Remarks: {{ application.college_remarks }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if application.principal_review_date %}
+                        <div class="timeline-item">
+                            <strong>Principal Review:</strong>
+                            <p>Status: {{ application.principal_status|title }}</p>
+                            <p>Date: {{ application.principal_review_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                            {% if application.principal_remarks %}
+                            <p>Remarks: {{ application.principal_remarks }}</p>
+                            {% endif %}
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -140,39 +167,4 @@
         </div>
     </div>
 </div>
-
-<style>
-.timeline {
-    position: relative;
-    padding: 20px 0;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 30px;
-    padding-left: 50px;
-}
-
-.timeline-badge {
-    position: absolute;
-    left: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    text-align: center;
-    color: white;
-    line-height: 36px;
-}
-
-.timeline-content {
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #f8f9fa;
-}
-
-.timeline-content h6 {
-    margin-bottom: 10px;
-}
-</style>
 {% endblock %}

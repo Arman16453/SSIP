@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Funding Application Status</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Application Details -->
+                    <div class="mb-4">
+                        <h5>Application Details</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th width="30%">Application Number</th>
+                                    <td>{{ application.application_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Project Title</th>
+                                    <td>{{ application.project_title }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Estimated Cost</th>
+                                    <td>₹{{ "%.2f"|format(application.total_cost) }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Actual Cost</th>
+                                    <td>₹{{ "%.2f"|format(funding.actual_cost) }}</td>
+                                </tr>
+                                {% if funding.bill_path %}
+                                <tr>
+                                    <th>Bill</th>
+                                    <td>
+                                        <a href="{{ url_for('static', filename=funding.bill_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-file-earmark-text"></i> View Bill
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if funding.remarks %}
+                                <tr>
+                                    <th>Remarks</th>
+                                    <td>{{ funding.remarks }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Approval Status Timeline -->
+                    <div class="mb-4">
+                        <h5>Approval Status</h5>
+                        <div class="timeline">
+                            {% for level, info in statuses.items() %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker 
+                                    {% if info.status == 'approved' %}bg-success{% elif info.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-2">{{ info.coordinator }}</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge {% if info.status == 'approved' %}bg-success{% elif info.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ info.status|title }}
+                                        </span>
+                                        {% if info.review_date %}
+                                        <small class="text-muted">{{ info.review_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        {% endif %}
+                                    </div>
+                                    {% if info.remarks %}
+                                    <p class="mb-0 mt-2 text-muted">{{ info.remarks }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                        
+                        {% if current_user.role == 'dept_coord' and funding.dept_status == 'pending' %}
+                        <form action="{{ url_for('approve_funding_dept', id=funding.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if current_user.role == 'college_coord' and funding.dept_status == 'approved' and funding.college_status == 'pending' %}
+                        <form action="{{ url_for('approve_funding_college', id=funding.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if current_user.role == 'principal' and funding.college_status == 'approved' and funding.principal_status == 'pending' %}
+                        <form action="{{ url_for('approve_funding_principal', id=funding.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding: 1rem 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    height: 100%;
+    width: 2px;
+    background: #dee2e6;
+    left: 1rem;
+    top: 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 3rem;
+    padding-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    left: 0.5rem;
+    top: 0.25rem;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+</style>
+{% endblock %}

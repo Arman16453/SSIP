@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Review SSIP Application</h2>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Project Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Application Number:</strong> {{ application.application_number }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Project Title:</strong> {{ application.project_title }}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <strong>Problem Statement:</strong>
+                    <p class="mb-2">{{ application.problem_statement }}</p>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <strong>Proposed Solution:</strong>
+                    <p class="mb-2">{{ application.solution }}</p>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Team Members:</strong>
+                    <p class="mb-0">{{ application.team_members }}</p>
+                </div>
+                <div class="col-md-6">
+                    <strong>Estimated Cost:</strong> ₹{{ "%.2f"|format(application.total_cost) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Current Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="badge-group mb-3">
+                <span class="badge status-badge {% if application.dept_status == 'approved' %}bg-success{% elif application.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Department: {{ application.dept_status|title }}
+                </span>
+                <span class="badge status-badge {% if application.college_status == 'approved' %}bg-success{% elif application.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    College: {{ application.college_status|title }}
+                </span>
+                <span class="badge status-badge {% if application.principal_status == 'approved' %}bg-success{% elif application.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Principal: {{ application.principal_status|title }}
+                </span>
+            </div>
+
+            <div class="timeline">
+                {% if application.dept_remarks %}
+                <div class="timeline-item {% if application.dept_status == 'approved' %}approved{% elif application.dept_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Department Review</h6>
+                    <p>{{ application.dept_remarks }}</p>
+                    <small>{{ application.dept_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if application.college_remarks %}
+                <div class="timeline-item {% if application.college_status == 'approved' %}approved{% elif application.college_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>College Review</h6>
+                    <p>{{ application.college_remarks }}</p>
+                    <small>{{ application.college_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if application.principal_remarks %}
+                <div class="timeline-item {% if application.principal_status == 'approved' %}approved{% elif application.principal_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Principal Review</h6>
+                    <p>{{ application.principal_remarks }}</p>
+                    <small>{{ application.principal_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if can_review %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Review Form</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Review Remarks</label>
+                    <textarea class="form-control" id="remarks" name="remarks" rows="3" required></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" name="action" value="approve" class="btn btn-success">
+                        Approve Application
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">
+                        Reject Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

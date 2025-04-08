@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Review Funding Request</h2>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Application Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Application Number:</strong> {{ funding.ssip_application.application_number }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Project Title:</strong> {{ funding.ssip_application.project_title }}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Estimated Cost:</strong> ₹{{ "%.2f"|format(funding.ssip_application.total_cost) }}
+                </div>
+                <div class="col-md-6">
+                    <strong>Actual Cost:</strong> ₹{{ "%.2f"|format(funding.actual_cost) }}
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-12">
+                    <strong>Student Remarks:</strong>
+                    <p class="mb-0">{{ funding.remarks or 'No remarks provided' }}</p>
+                </div>
+            </div>
+            {% if funding.bill_path %}
+            <div class="row mb-3">
+                <div class="col-12">
+                    <strong>Uploaded Bill:</strong>
+                    <a href="{{ url_for('static', filename=funding.bill_path) }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">View Bill</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Current Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="badge-group mb-3">
+                <span class="badge status-badge {% if funding.dept_status == 'approved' %}bg-success{% elif funding.dept_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Department: {{ funding.dept_status|title }}
+                </span>
+                <span class="badge status-badge {% if funding.college_status == 'approved' %}bg-success{% elif funding.college_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    College: {{ funding.college_status|title }}
+                </span>
+                <span class="badge status-badge {% if funding.principal_status == 'approved' %}bg-success{% elif funding.principal_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                    Principal: {{ funding.principal_status|title }}
+                </span>
+            </div>
+
+            <div class="timeline">
+                {% if funding.dept_remarks %}
+                <div class="timeline-item {% if funding.dept_status == 'approved' %}approved{% elif funding.dept_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Department Review</h6>
+                    <p>{{ funding.dept_remarks }}</p>
+                    <small>{{ funding.dept_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if funding.college_remarks %}
+                <div class="timeline-item {% if funding.college_status == 'approved' %}approved{% elif funding.college_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>College Review</h6>
+                    <p>{{ funding.college_remarks }}</p>
+                    <small>{{ funding.college_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+
+                {% if funding.principal_remarks %}
+                <div class="timeline-item {% if funding.principal_status == 'approved' %}approved{% elif funding.principal_status == 'rejected' %}rejected{% else %}pending{% endif %}">
+                    <h6>Principal Review</h6>
+                    <p>{{ funding.principal_remarks }}</p>
+                    <small>{{ funding.principal_review_date|datetime }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if can_review %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">Review Form</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="remarks" class="form-label">Review Remarks</label>
+                    <textarea class="form-control" id="remarks" name="remarks" rows="3" required></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" name="action" value="approve" class="btn btn-success">
+                        Approve Funding
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger">
+                        Reject Funding
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
