@@ -198,8 +198,8 @@ def dashboard():
                 purchase_items.extend(items)
         approved_applications = []
     elif current_user.role == 'dept_coord':
-        # Show only pending applications
-        applications = Application.query.filter_by(dept_status='pending').all()
+        # Show all applications
+        applications = Application.query.all()
         
         # Get pending purchase items
         purchase_items = PurchaseList.query.join(Application).filter(
@@ -218,8 +218,10 @@ def dashboard():
             Application.dept_status.in_(['approved', 'rejected'])
         ).order_by(Application.created_at.desc()).all()
     elif current_user.role == 'college_coord':
-        # Show pending applications
-        applications = Application.query.filter_by(dept_status='approved', college_status='pending').all()
+        # Show applications for college coordinator
+        applications = Application.query.filter(
+            Application.dept_status != 'pending'
+        ).order_by(Application.created_at.desc()).all()
         
         # Get pending purchase items
         purchase_items = PurchaseList.query.join(Application).filter(
